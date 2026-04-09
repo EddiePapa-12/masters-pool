@@ -1,0 +1,944 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Google Fonts are loaded via next/font in layout.tsx ─── */
+
+:root {
+    --augusta-green: #006747;
+    --dark-green: #004d33;
+    --white: #ffffff;
+    --off-white: #fafafa;
+    --black: #000000;
+    --red: #FF0000;
+    --score-red: #FF0000;
+    --gold: #ffd700;
+    --border-gray: #cccccc;
+    --light-gray: #f5f5f5;
+    --table-gray: #DAD9D4;
+    --table-green: #346C50;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Source Sans 3', sans-serif;
+    background: var(--off-white);
+    color: var(--black);
+    min-height: 100vh;
+}
+
+/* Top Navigation Bar */
+.top-nav {
+    background: white;
+    border-bottom: 2px solid var(--border-gray);
+    padding: 0.5rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-left-placeholder {
+    flex: 1;
+}
+
+.nav-icon {
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.nav-icon:hover {
+    opacity: 1;
+}
+
+.nav-logo-container {
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.nav-logo {
+    height: 70px;
+    max-width: 300px;
+    object-fit: contain;
+}
+
+/* Inline status bar in header */
+.nav-status-bar {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+}
+
+.nav-status-bar .nav-live-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.nav-status-bar .nav-live-dot .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse-green 2s infinite;
+    flex-shrink: 0;
+}
+
+.nav-status-bar .nav-live-dot .dot.updating {
+    background: #f59e0b;
+    animation: pulse-amber 1s infinite;
+}
+
+.nav-status-bar .nav-last-updated {
+    color: #777;
+    font-weight: 400;
+    font-size: 0.72rem;
+}
+
+.nav-status-bar .nav-cut-badge {
+    background: var(--augusta-green);
+    color: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* Main Navigation Tabs */
+.main-nav {
+    background: var(--augusta-green);
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    flex-wrap: wrap;
+}
+
+.nav-tab-button {
+    background: var(--augusta-green);
+    border: none;
+    color: white;
+    padding: 1rem 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    border-right: 1px solid rgba(255,255,255,0.2);
+    text-transform: none;
+    letter-spacing: 0;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.nav-tab-button:last-child {
+    border-right: none;
+}
+
+.nav-tab-button:hover {
+    background: var(--dark-green);
+}
+
+.nav-tab-button.active {
+    background: var(--dark-green);
+    box-shadow: inset 0 3px 0 0 var(--gold);
+}
+
+.nav-tab-icon {
+    width: 20px;
+    height: 20px;
+    filter: brightness(0) invert(1);
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Live status bar */
+.live-status-bar {
+    background: #1a1a1a;
+    color: white;
+    padding: 0.5rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.live-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.live-dot .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse-green 2s infinite;
+}
+
+.live-dot .dot.updating {
+    background: #f59e0b;
+    animation: pulse-amber 1s infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+@keyframes pulse-amber {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.projected-cut-badge {
+    background: var(--augusta-green);
+    color: white;
+    padding: 0.2rem 0.75rem;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.last-updated {
+    color: #aaa;
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
+/* Classic Leaderboard */
+.leaderboard-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+}
+
+.leaderboard-frame {
+    background: var(--black);
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.leaderboard-title {
+    background: var(--white);
+    padding: 1.5rem;
+    text-align: center;
+    border-bottom: 3px solid var(--black);
+}
+
+.leaderboard-title h1 {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin: 0;
+    font-variant: small-caps;
+}
+
+.leaderboard-stats {
+    background: var(--light-gray);
+    padding: 0.75rem;
+    text-align: center;
+    font-size: 0.95rem;
+    border-bottom: 2px solid var(--border-gray);
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 700;
+}
+
+.leaderboard-stats span {
+    margin: 0 1.5rem;
+    font-weight: 700;
+}
+
+.leaderboard-table-container {
+    background: var(--white);
+    overflow-x: auto;
+}
+
+.leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.leaderboard-table thead {
+    background: var(--augusta-green);
+}
+
+.leaderboard-table th {
+    color: white;
+    padding: 1rem 0.75rem;
+    text-align: center;
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+    border-right: 2px solid rgba(255,255,255,0.3);
+}
+
+.leaderboard-table th:first-child {
+    background: var(--augusta-green);
+}
+
+.leaderboard-table th:last-child {
+    border-right: none;
+}
+
+.leaderboard-table td {
+    padding: 1.1rem 0.75rem;
+    text-align: center;
+    border-bottom: 2px solid var(--border-gray);
+    border-right: 1px solid #e0e0e0;
+    font-size: 1rem;
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 600;
+}
+
+.leaderboard-table td:last-child {
+    border-right: none;
+}
+
+.leaderboard-table tbody tr:hover {
+    background: #fffef0;
+}
+
+.pos-cell {
+    font-weight: 800;
+    font-size: 1.15rem;
+    background: var(--light-gray);
+    font-family: 'Source Sans 3', sans-serif;
+}
+
+/* No yellow background on top positions */
+.pos-cell.top-position {
+    background: var(--light-gray);
+}
+
+.team-name-cell {
+    text-align: left;
+    font-weight: 800;
+    font-size: 1rem;
+    font-family: 'Source Sans 3', sans-serif;
+    font-variant: small-caps;
+}
+
+.team-name-link {
+    color: #346C50;
+    text-decoration: none;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.team-name-link:hover {
+    text-decoration: underline;
+}
+
+.score-cell {
+    font-weight: 800;
+    font-size: 1.3rem;
+    font-family: 'Source Sans 3', sans-serif;
+}
+
+.score-negative {
+    color: #FF0000;
+}
+
+.score-positive {
+    color: #000000;
+}
+
+.score-even {
+    color: var(--black);
+}
+
+.leaderboard-footer {
+    background: var(--augusta-green);
+    padding: 1rem;
+    text-align: center;
+    color: white;
+    font-style: italic;
+    font-size: 1.25rem;
+    font-family: Georgia, serif;
+}
+
+/* Empty/Error states */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+    font-size: 1.2rem;
+    font-family: 'Source Sans 3', sans-serif;
+    background: white;
+}
+
+.error-state {
+    background: #fee2e2;
+    border: 2px solid #ef4444;
+    color: #b91c1c;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+/* Cards */
+.card {
+    background: white;
+    padding: 2rem;
+    margin: 2rem 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--augusta-green);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-gray);
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--augusta-green);
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="password"],
+select {
+    width: 100%;
+    padding: 0.875rem;
+    border: 2px solid var(--border-gray);
+    font-size: 1rem;
+    font-family: 'Source Sans 3', sans-serif;
+    transition: border-color 0.3s;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: var(--augusta-green);
+}
+
+button {
+    background: var(--augusta-green);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+button:hover {
+    background: var(--dark-green);
+}
+
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.button-secondary {
+    background: white;
+    color: var(--augusta-green);
+    border: 2px solid var(--augusta-green);
+}
+
+.button-secondary:hover {
+    background: var(--augusta-green);
+    color: white;
+}
+
+/* Team Details */
+.team-selector {
+    margin: 2rem 0;
+}
+
+.team-details-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    border: 2px solid var(--table-green);
+}
+
+.team-details-table thead {
+    background: var(--augusta-green);
+    color: white;
+}
+
+.team-details-table th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 800;
+    font-family: 'Source Sans 3', sans-serif;
+    font-variant: small-caps;
+    font-size: 1rem;
+    border-right: 2px solid var(--table-green);
+    color: white;
+    background: var(--augusta-green);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.team-details-table th:last-child {
+    border-right: none;
+}
+
+.team-details-table td {
+    padding: 0.75rem;
+    border-bottom: 2px solid var(--table-green);
+    border-right: 2px solid var(--table-green);
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 600;
+}
+
+.team-details-table td:last-child {
+    border-right: none;
+}
+
+.team-details-table tbody tr:hover {
+    background: var(--light-gray);
+}
+
+.tier-cell {
+    text-align: center;
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: #555;
+    background: #f9f9f9;
+}
+
+.totals-cell {
+    background: var(--table-gray) !important;
+    font-weight: 800;
+}
+
+.golfer-score-positive {
+    color: #000000;
+    font-weight: 700;
+}
+
+.golfer-score-negative {
+    color: #FF0000;
+    font-weight: 700;
+}
+
+.golfer-cut {
+    display: inline-block;
+    background: #c00;
+    color: white;
+    padding: 0.3rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    font-family: 'Source Sans 3', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.golfer-made-cut {
+    display: inline-block;
+    background: #006747;
+    color: white;
+    padding: 0.3rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    font-family: 'Source Sans 3', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.team-card-header {
+    background: var(--augusta-green);
+    color: white;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.team-card-header-score {
+    background: white;
+    color: #000;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 90px;
+    flex-shrink: 0;
+}
+
+.team-card-header-score .score-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #555;
+    font-family: 'Source Sans 3', sans-serif;
+    margin-bottom: 0.1rem;
+}
+
+.team-card-header-score .score-value {
+    font-size: 2.2rem;
+    font-weight: 800;
+    font-family: 'Source Sans 3', sans-serif;
+    line-height: 1;
+}
+
+.team-card-header-score .score-value.score-negative {
+    color: #FF0000;
+}
+
+.team-card-header-score .score-value.score-positive {
+    color: #000;
+}
+
+.team-card-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+}
+
+.team-card-header h3 {
+    font-size: 1.75rem;
+    margin: 0;
+    color: white;
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 800;
+    font-variant: small-caps;
+}
+
+.team-card-header .entrant-label {
+    font-size: 1rem;
+    color: rgba(255,255,255,0.85);
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 600;
+}
+
+/* Dropped picks (not in best 8) */
+.dropped-pick td {
+    opacity: 0.5;
+}
+
+/* Info box */
+.info-box {
+    background: #e8f3ec;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border-left: 4px solid var(--gold);
+    line-height: 1.8;
+}
+
+/* Golf Leaderboard Tab */
+.golf-leaderboard-container {
+    max-width: 1100px;
+    margin: 2rem auto;
+}
+
+.golf-lb-header {
+    background: var(--white);
+    padding: 1.5rem;
+    text-align: center;
+    border-bottom: 3px solid var(--black);
+}
+
+.golf-lb-header h1 {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+    margin: 0;
+}
+
+.golf-lb-badges {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--light-gray);
+    border-bottom: 2px solid var(--border-gray);
+    flex-wrap: wrap;
+}
+
+.cut-badge {
+    background: #c41e3a;
+    color: white;
+    padding: 0.3rem 1rem;
+    font-weight: 800;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.95rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.golf-lb-table-wrap {
+    overflow-x: auto;
+    background: white;
+}
+
+.golf-lb-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.golf-lb-table thead {
+    background: var(--augusta-green);
+}
+
+.golf-lb-table th {
+    color: white;
+    padding: 0.9rem 0.75rem;
+    text-align: center;
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    font-variant: small-caps;
+    border-right: 1px solid rgba(255,255,255,0.3);
+    white-space: nowrap;
+}
+
+.golf-lb-table th:last-child { border-right: none; }
+
+.golf-lb-table td {
+    padding: 0.85rem 0.75rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border-gray);
+    border-right: 1px solid #e0e0e0;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.golf-lb-table td:last-child { border-right: none; }
+
+.golf-lb-table tbody tr:hover { background: #fffef0; }
+
+.golf-lb-table td.player-name-td {
+    text-align: left;
+    font-weight: 700;
+}
+
+.golf-lb-table td.pos-td {
+    font-weight: 800;
+    font-size: 1.05rem;
+    background: var(--light-gray);
+}
+
+.projected-cut-row td {
+    background: #1a5c3a !important;
+    color: white !important;
+    font-weight: 800;
+    font-size: 0.95rem;
+    text-align: center;
+    letter-spacing: 0.03em;
+    font-family: 'Source Sans 3', sans-serif;
+    font-variant: small-caps;
+    padding: 0.6rem;
+}
+
+.golf-score-neg { color: #FF0000; font-weight: 800; }
+.golf-score-pos { color: #000; font-weight: 700; }
+.golf-score-even { color: #000; font-weight: 700; }
+
+/* Page footer */
+.site-footer {
+    text-align: center;
+    padding: 1.5rem;
+    color: #999;
+    font-size: 0.8rem;
+}
+
+.site-footer a {
+    color: #999;
+    text-decoration: none;
+}
+
+.site-footer a:hover {
+    color: var(--augusta-green);
+    text-decoration: underline;
+}
+
+/* Updating banner */
+.updating-banner {
+    text-align: center;
+    padding: 0.5rem;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .top-nav {
+        padding: 0.3rem 0.75rem;
+    }
+
+    .nav-logo {
+        height: 38px;
+    }
+
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .nav-status-bar {
+        gap: 0.4rem;
+        font-size: 0.65rem;
+    }
+
+    .nav-status-bar .nav-last-updated {
+        display: none;
+    }
+
+    .main-nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .nav-tab-button {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        border-right: 1px solid rgba(255,255,255,0.2);
+        border-bottom: none;
+        flex-shrink: 0;
+    }
+
+    .container {
+        padding: 1rem;
+    }
+
+    .leaderboard-title h1 {
+        font-size: 1.4rem;
+    }
+
+    .leaderboard-stats {
+        font-size: 0.8rem;
+    }
+
+    .leaderboard-stats span {
+        display: inline-block;
+        margin: 0.2rem 0.5rem;
+    }
+
+    .leaderboard-table-container,
+    .golf-lb-table-wrap,
+    .team-details-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .leaderboard-table {
+        font-size: 0.8rem;
+        min-width: 500px;
+    }
+
+    .golf-lb-table {
+        font-size: 0.8rem;
+        min-width: 600px;
+    }
+
+    .team-details-table {
+        font-size: 0.8rem;
+        min-width: 550px;
+    }
+
+    .leaderboard-table th,
+    .leaderboard-table td {
+        padding: 0.6rem 0.35rem;
+    }
+
+    .score-cell {
+        font-size: 1rem;
+    }
+
+    .team-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+
+    .team-card-header-score {
+        font-size: 1.8rem;
+    }
+
+    .team-card-header h3 {
+        font-size: 1.3rem;
+    }
+
+    .live-status-bar {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        font-size: 0.8rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .golf-lb-header h1 {
+        font-size: 1.4rem;
+    }
+}
