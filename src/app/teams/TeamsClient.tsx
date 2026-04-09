@@ -150,17 +150,17 @@ export default function TeamsClient({ entries, initialTeamKey }: Props) {
                     >
                       <strong>{formatScore(pick.adj_score)}</strong>
                     </td>
-                    <td className={golferScoreClass(pick.round_1 ?? (pick.round_2 === null && pick.status === "active" ? pick.today : null))}>
-                      {formatScore(pick.round_1 ?? (pick.round_2 === null && pick.status === "active" ? pick.today : null))}
+                    <td className={golferScoreClass(pick.round_1)}>
+                      {formatScore(pick.round_1)}
                     </td>
-                    <td className={golferScoreClass(pick.round_2 ?? (pick.round_3 === null && pick.round_1 !== null && pick.status === "active" ? pick.today : null))}>
-                      {formatScore(pick.round_2 ?? (pick.round_3 === null && pick.round_1 !== null && pick.status === "active" ? pick.today : null))}
+                    <td className={golferScoreClass(pick.round_2)}>
+                      {formatScore(pick.round_2)}
                     </td>
-                    <td className={golferScoreClass(pick.round_3 ?? (pick.round_4 === null && pick.round_2 !== null && pick.status === "active" ? pick.today : null))}>
-                      {formatScore(pick.round_3 ?? (pick.round_4 === null && pick.round_2 !== null && pick.status === "active" ? pick.today : null))}
+                    <td className={golferScoreClass(pick.round_3)}>
+                      {formatScore(pick.round_3)}
                     </td>
-                    <td className={golferScoreClass(pick.round_4 ?? (pick.round_3 !== null && pick.status === "active" ? pick.today : null))}>
-                      {formatScore(pick.round_4 ?? (pick.round_3 !== null && pick.status === "active" ? pick.today : null))}
+                    <td className={golferScoreClass(pick.round_4)}>
+                      {formatScore(pick.round_4)}
                     </td>
                     <td>
                       {pick.status === "active" ? (
