@@ -29,7 +29,7 @@ export async function loginAction(formData: FormData) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: SESSION_MAX_AGE,
-    path: "/admin",
+    path: "/",  // must be "/" so cookie is sent to /api/admin/* routes too
   });
 
   return { success: true };

@@ -21,8 +21,8 @@ export const revalidate = 60;
 
 function getClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Use anon key — calculate_leaderboard() reads data that can be public
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Service role key: anon role lacks SELECT grants on tables created via SQL editor
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error("Missing Supabase env vars");
   return createClient<Database>(url, key, { auth: { persistSession: false } });
 }
