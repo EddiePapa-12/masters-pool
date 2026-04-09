@@ -160,9 +160,11 @@ export async function GET(req: NextRequest) {
  */
 function normalise(name: string): string {
   return name
+    .normalize("NFD")                          // decompose accented chars (é → e + ́)
+    .replace(/[\u0300-\u036f]/g, "")           // strip the accent marks (Välimäki → Valimaki)
     .toLowerCase()
     .trim()
     .replace(/\s+/g, " ")
-    .replace(/\s*\(a\)\s*$/i, "")   // strip "(a)" amateur marker
+    .replace(/\s*\(a\)\s*$/i, "")             // strip "(a)" amateur marker
     .replace(/\s*\(amateur\)\s*$/i, "");
 }

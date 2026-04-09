@@ -93,5 +93,11 @@ export async function POST() {
 }
 
 function normalise(name: string): string {
-  return name.toLowerCase().trim().replace(/\s+/g, " ").replace(/\s*\(a\)\s*$/i, "");
+  return name
+    .normalize("NFD")                          // decompose accented chars (é → e + ́)
+    .replace(/[\u0300-\u036f]/g, "")           // strip the accent marks (García → Garcia)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\s*\(a\)\s*$/i, "");
 }
