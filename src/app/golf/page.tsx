@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { formatScore, golfScoreClass } from "@/lib/format";
@@ -124,15 +125,15 @@ export default async function GolfLeaderboardPage() {
               </thead>
               <tbody>
                 {rows.map((row, idx) => (
-                  <>
+                  <Fragment key={row.golfer_name}>
                     {cutInsertIndex !== -1 && idx === cutInsertIndex && (
-                      <tr key="cut-line" className="projected-cut-row">
+                      <tr className="projected-cut-row">
                         <td colSpan={9}>
                           &mdash;&mdash; Projected Cut: {cutLabel} &mdash;&mdash;
                         </td>
                       </tr>
                     )}
-                    <tr key={row.golfer_name}>
+                    <tr>
                       <td className="pos-td">{row.position ?? "-"}</td>
                       <td className="player-name-td">{row.golfer_name}</td>
                       <td className={golfScoreClass(row.score_vs_par)}>
@@ -155,7 +156,7 @@ export default async function GolfLeaderboardPage() {
                         {formatScore(row.round_4)}
                       </td>
                     </tr>
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>

@@ -3,20 +3,21 @@
  *
  * Endpoint: https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard
  *
- * The ESPN response structure (as observed from their public API):
- *   response.events[0].competitions[0].competitors[]
- *     .athlete.displayName   — full golfer name
- *     .score                 — score vs par as string: "-11", "E", "+3", "CUT"
- *     .status.type.name      — "STATUS_ACTIVE", "STATUS_CUT", "STATUS_WD", "STATUS_DQ", "STATUS_FINAL"
- *     .status.type.shortDetail — "F" (finished), "14" (thru 14 holes), "10:48 AM" (tee time)
- *     .status.period         — current round (1–4)
- *     .status.thru           — holes completed in current round (0–18)
- *     .linescores[]          — per-round raw stroke totals
- *       .value               — numeric strokes (e.g. 68)
- *       .displayValue        — string version
+ * ACTUAL live structure (verified via curl during 2026 tournament):
  *
- * NOTE: If the parser breaks during the tournament, log `rawCompetitors[0]`
- * and compare to the type shapes below to find the mismatch.
+ *   competitor.linescores[]           — one entry per round played / in-progress
+ *     .period                         — round number (1–4)
+ *     .value                          — running stroke total for that round (raw strokes)
+ *     .displayValue                   — score vs par for that round  e.g. "-2", "E", "+1"
+ *     .linescores[]                   — hole-by-hole scores; .length = holes completed (0–18)
+ *
+ *   competitor.status.period          — NULL (do not use)
+ *   competitor.status.thru            — NULL (do not use)
+ *   competitor.status.type.name       — "STATUS_ACTIVE" | "STATUS_CUT" | "STATUS_WD" | "STATUS_DQ"
+ *   competitor.status.type.shortDetail — tee time string if not yet started (e.g. "10:48 AM")
+ *   competitor.score                  — overall score vs par string "-11" | "E" | "+3" | "CUT"
+ *
+ * NOTE: If the parser breaks, log `rawCompetitors[0]` and compare to the types below.
  */
 
 export interface ScoreUpsertRow {
@@ -37,22 +38,35 @@ export interface ScoreUpsertRow {
 // ESPN response types (partial — only fields we use)
 // ---------------------------------------------------------------------------
 
-interface EspnLinescore {
+/** One hole's score inside a round linescore. */
+interface EspnHoleScore {
   value?: number;
   displayValue?: string;
+}
+
+/**
+ * One round's linescore block.
+ * NOTE: The nested `.linescores` array contains hole-by-hole scores.
+ * Its length tells us how many holes the player has completed.
+ */
+interface EspnRoundLinescore {
+  period?: number;           // which round (1–4)
+  value?: number;            // running raw stroke total for this round
+  displayValue?: string;     // score vs par for this round: "-2", "E", "+1", "70", etc.
+  linescores?: EspnHoleScore[]; // hole-by-hole scores; length = holes completed
 }
 
 interface EspnStatusType {
   name?: string;          // "STATUS_ACTIVE" | "STATUS_CUT" | "STATUS_WD" | "STATUS_DQ" | "STATUS_FINAL"
   description?: string;   // "In Progress" | "Cut" | "Withdrawn" | "Disqualified" | "Final"
-  shortDetail?: string;   // "F" | "14" | "10:48 AM" etc.
+  shortDetail?: string;   // tee time "10:48 AM" when not yet started; "F" when finished; or holes thru
   state?: string;         // "in" | "post" | "pre"
 }
 
 interface EspnStatus {
   type?: EspnStatusType;
-  period?: number;        // current round
-  thru?: number;          // holes completed
+  period?: number;        // NULL in live feed — do not rely on this
+  thru?: number;          // NULL in live feed — do not rely on this
 }
 
 interface EspnAthlete {
@@ -60,18 +74,11 @@ interface EspnAthlete {
   shortName?: string;
 }
 
-interface EspnStatistic {
-  name?: string;
-  displayValue?: string;
-  value?: number;
-}
-
 interface EspnCompetitor {
   athlete?: EspnAthlete;
-  score?: string;         // "-11", "E", "+3", "CUT", or absent
+  score?: string;              // "-11", "E", "+3", "CUT", or absent
   status?: EspnStatus;
-  linescores?: EspnLinescore[];
-  statistics?: EspnStatistic[];
+  linescores?: EspnRoundLinescore[];  // outer array = rounds; inner array = holes
 }
 
 interface EspnCompetition {
@@ -91,16 +98,19 @@ interface EspnScoreboardResponse {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Parse ESPN score string → integer vs par. "E" → 0, null/absent → null. */
-function parseScoreVsPar(raw: string | undefined): number | null {
+const PAR = 72; // Augusta National par
+
+/** Parse ESPN score-vs-par string → integer. "E" → 0, null/CUT/absent → null. */
+function parseScoreVsPar(raw: string | undefined | null): number | null {
   if (raw == null || raw === "" || raw === "-") return null;
-  if (raw.toUpperCase() === "E") return 0;
-  if (raw.toUpperCase() === "CUT") return null;
+  const upper = raw.toUpperCase();
+  if (upper === "E" || upper === "EVEN") return 0;
+  if (upper === "CUT" || upper === "WD" || upper === "DQ" || upper === "MDF") return null;
   const n = parseInt(raw, 10);
   return isNaN(n) ? null : n;
 }
 
-/** Map ESPN status type name to our pool status enum. */
+/** Map ESPN status type name → our pool status enum. */
 function parseStatus(statusType: EspnStatusType | undefined): "active" | "cut" | "wd" | "dq" {
   const name = (statusType?.name ?? "").toUpperCase();
   const desc = (statusType?.description ?? "").toUpperCase();
@@ -112,76 +122,194 @@ function parseStatus(statusType: EspnStatusType | undefined): "active" | "cut" |
 }
 
 /**
- * Parse the "thru" display value for the database.
- * - If player is finished: "F"
- * - If in progress: "14" (holes completed)
- * - If not started: "10:48 AM" (tee time from shortDetail) or null
+ * Parse round data from the nested linescores structure.
+ *
+ * Returns the per-round vs-par scores (null if round not yet reached),
+ * thru holes for the current round, and today's score vs par.
+ *
+ * A round's score is set to the vs-par value from displayValue regardless of
+ * whether the round is complete or still in progress — so the R1 column shows
+ * the current running score while play is ongoing, and switches to the final
+ * score once the round is complete. This matches what players expect to see.
  */
-function parseThru(
-  status: EspnStatus | undefined,
+function parseRoundData(
+  competitor: EspnCompetitor,
   poolStatus: "active" | "cut" | "wd" | "dq"
-): string | null {
-  if (poolStatus !== "active") return null;
+): {
+  round_1: number | null;
+  round_2: number | null;
+  round_3: number | null;
+  round_4: number | null;
+  total_strokes: number | null;
+  thru: string | null;
+  today: number | null;
+} {
+  const nullResult = {
+    round_1: null, round_2: null, round_3: null, round_4: null,
+    total_strokes: null, thru: null, today: null,
+  };
 
-  const thruHoles = status?.thru;
-  const shortDetail = status?.type?.shortDetail ?? "";
-  const state = status?.type?.state ?? "";
+  if (poolStatus !== "active") {
+    // For cut/wd/dq players: still record completed round scores
+    // but set thru/today to null
+    const roundScores = extractRoundScores(competitor.linescores);
+    return { ...roundScores, thru: null, today: null };
+  }
 
-  // Completed round
-  if (shortDetail === "F" || shortDetail.toUpperCase() === "FINAL") return "F";
+  const outerLinescores = competitor.linescores ?? [];
 
-  // In progress — holes completed is a number 1–17
-  if (typeof thruHoles === "number" && thruHoles > 0) return String(thruHoles);
+  if (outerLinescores.length === 0) {
+    // Player hasn't started — show tee time in thru if available
+    const teeTime = competitor.status?.type?.shortDetail ?? null;
+    return { ...nullResult, thru: teeTime };
+  }
 
-  // Not yet started — shortDetail may contain tee time like "10:48 AM"
-  if (state === "pre" && shortDetail) return shortDetail;
+  // Find which round is currently active (most recent / in-progress):
+  // The active round is the one with the fewest holes played (< 18),
+  // or the last round entry if all are complete.
+  let currentRound: EspnRoundLinescore | null = null;
+  let currentHolesPlayed = 0;
 
-  // Fallback
-  return shortDetail || null;
+  // Sort by period to ensure we process rounds in order
+  const sorted = [...outerLinescores].sort((a, b) => (a.period ?? 0) - (b.period ?? 0));
+
+  for (const ls of sorted) {
+    const holes = ls.linescores?.length ?? 0;
+    if (holes < 18) {
+      // This round is in progress (or not started = 0 holes)
+      currentRound = ls;
+      currentHolesPlayed = holes;
+      break;
+    }
+    // holes === 18: completed round, keep going to find next
+    currentRound = ls; // will be overwritten if there's a later in-progress round
+    currentHolesPlayed = 18;
+  }
+
+  // Build round-by-round vs-par scores
+  const roundScores = extractRoundScores(competitor.linescores);
+
+  // Determine thru display
+  let thru: string | null = null;
+  if (currentRound) {
+    if (currentHolesPlayed === 18) {
+      thru = "F";
+    } else if (currentHolesPlayed > 0) {
+      thru = String(currentHolesPlayed);
+    } else {
+      // 0 holes played — check for tee time in shortDetail
+      thru = competitor.status?.type?.shortDetail ?? null;
+    }
+  }
+
+  // Today's score = current round's vs-par (in-progress or just finished)
+  let today: number | null = null;
+  if (currentRound) {
+    today = parseScoreVsPar(currentRound.displayValue);
+    // Fallback: compute from raw strokes and holes played
+    if (today === null && currentRound.value != null && currentHolesPlayed > 0) {
+      // Approximate: running strokes minus par for holes played
+      const parPerHole = PAR / 18;
+      today = Math.round(currentRound.value - parPerHole * currentHolesPlayed);
+    }
+  }
+
+  return { ...roundScores, thru, today };
 }
 
 /**
- * Determine today's round score vs par.
- * ESPN sometimes puts it in statistics[], otherwise we derive it from
- * the current round's linescore minus par (72).
+ * Extract per-round vs-par scores from the outer linescores array.
+ * Each outer entry corresponds to one round (identified by .period).
+ * Score is taken from displayValue (vs par), falling back to value - par_proportion.
  */
-function parseToday(
-  competitor: EspnCompetitor,
-  par: number,
-  poolStatus: "active" | "cut" | "wd" | "dq"
-): number | null {
-  if (poolStatus !== "active") return null;
+function extractRoundScores(outerLinescores: EspnRoundLinescore[] | undefined): {
+  round_1: number | null;
+  round_2: number | null;
+  round_3: number | null;
+  round_4: number | null;
+  total_strokes: number | null;
+} {
+  const scores: Record<number, number | null> = { 1: null, 2: null, 3: null, 4: null };
 
-  // Try statistics array first
-  const todayStat = competitor.statistics?.find(
-    (s) => s.name === "todaysRound" || s.name === "today"
-  );
-  if (todayStat?.value != null) return todayStat.value;
-  if (todayStat?.displayValue != null) {
-    const v = parseScoreVsPar(todayStat.displayValue);
-    if (v != null) return v;
+  for (const ls of outerLinescores ?? []) {
+    const period = ls.period;
+    if (!period || period < 1 || period > 4) continue;
+
+    const holes = ls.linescores?.length ?? 0;
+    if (holes === 0) {
+      // No holes played in this round yet
+      scores[period] = null;
+      continue;
+    }
+
+    // Parse the vs-par score from displayValue
+    const vsPar = parseScoreVsPar(ls.displayValue);
+    if (vsPar !== null) {
+      scores[period] = vsPar;
+    } else if (ls.value != null) {
+      // displayValue wasn't a vs-par string — try treating value as raw strokes
+      // Only do this if > 50 (looks like stroke total, not vs par)
+      if (ls.value > 50) {
+        scores[period] = ls.value - PAR;
+      } else {
+        scores[period] = ls.value; // might already be vs par
+      }
+    }
   }
 
-  // Fallback: current round linescore minus par
-  const currentRound = competitor.status?.period ?? 0;
-  if (currentRound > 0) {
-    const ls = competitor.linescores?.[currentRound - 1];
-    if (ls?.value != null) return ls.value - par;
-  }
+  // Compute total raw strokes (sum of all rounds where we have a completed score)
+  // We don't have reliable raw strokes from displayValue alone, so set to null
+  // (the DB column exists but isn't displayed directly to users)
+  const total_strokes: number | null = null;
 
-  return null;
+  return {
+    round_1: scores[1],
+    round_2: scores[2],
+    round_3: scores[3],
+    round_4: scores[4],
+    total_strokes,
+  };
 }
 
-/** Extract a round's raw strokes from linescores[idx]. Null if not played. */
-function roundStrokes(linescores: EspnLinescore[] | undefined, idx: number): number | null {
-  const ls = linescores?.[idx];
-  if (ls?.value != null) return ls.value;
-  // displayValue fallback
-  if (ls?.displayValue) {
-    const n = parseInt(ls.displayValue, 10);
-    if (!isNaN(n)) return n;
+/**
+ * After all rows are built, assign T1/T2/T3 style positions to active players
+ * based on their score_vs_par, handling ties correctly.
+ * Cut/WD/DQ players get their status label as position.
+ */
+function assignPositions(rows: ScoreUpsertRow[]): void {
+  // Separate active players with a score from those without
+  const activeWithScore = rows.filter(
+    (r) => r.status === "active" && r.score_vs_par !== null
+  );
+
+  // Sort ascending (lowest = best)
+  activeWithScore.sort((a, b) => (a.score_vs_par ?? 0) - (b.score_vs_par ?? 0));
+
+  let rankCounter = 1;
+  for (let i = 0; i < activeWithScore.length; i++) {
+    if (i > 0 && activeWithScore[i].score_vs_par !== activeWithScore[i - 1].score_vs_par) {
+      rankCounter = i + 1;
+    }
+    // Check if anyone else shares this score (tie)
+    const tied = activeWithScore.some(
+      (r, j) => j !== i && r.score_vs_par === activeWithScore[i].score_vs_par
+    );
+    activeWithScore[i].position = tied ? `T${rankCounter}` : String(rankCounter);
   }
-  return null;
+
+  // Active players with no score yet (not started tournament)
+  rows
+    .filter((r) => r.status === "active" && r.score_vs_par === null)
+    .forEach((r) => {
+      r.position = "--";
+    });
+
+  // Non-active players
+  rows.filter((r) => r.status !== "active").forEach((r) => {
+    if (r.status === "cut") r.position = "CUT";
+    else if (r.status === "wd") r.position = "WD";
+    else if (r.status === "dq") r.position = "DQ";
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -191,11 +319,8 @@ function roundStrokes(linescores: EspnLinescore[] | undefined, idx: number): num
 const ESPN_URL =
   "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard";
 
-const PAR = 72; // Augusta National — also in pool_settings; hardcoded here as fallback
-
 export async function fetchMastersScores(): Promise<ScoreUpsertRow[]> {
   const res = await fetch(ESPN_URL, {
-    // No cache: we always want the freshest data on each server call
     cache: "no-store",
     headers: {
       "User-Agent": "masters-pool-app/1.0",
@@ -210,9 +335,8 @@ export async function fetchMastersScores(): Promise<ScoreUpsertRow[]> {
 
   // Find the Masters event (or fall back to the first event)
   const event =
-    data.events?.find((e) =>
-      e.name?.toLowerCase().includes("masters")
-    ) ?? data.events?.[0];
+    data.events?.find((e) => e.name?.toLowerCase().includes("masters")) ??
+    data.events?.[0];
 
   if (!event) {
     throw new Error("ESPN response contained no events");
@@ -221,7 +345,9 @@ export async function fetchMastersScores(): Promise<ScoreUpsertRow[]> {
   const competitors = event.competitions?.[0]?.competitors ?? [];
 
   if (competitors.length === 0) {
-    throw new Error("ESPN event contained no competitors — tournament may not have started");
+    throw new Error(
+      "ESPN event contained no competitors — tournament may not have started"
+    );
   }
 
   const rows: ScoreUpsertRow[] = [];
@@ -233,58 +359,26 @@ export async function fetchMastersScores(): Promise<ScoreUpsertRow[]> {
     const poolStatus = parseStatus(c.status?.type);
     const scoreVsPar = parseScoreVsPar(c.score);
 
-    const r1 = roundStrokes(c.linescores, 0);
-    const r2 = roundStrokes(c.linescores, 1);
-    const r3 = roundStrokes(c.linescores, 2);
-    const r4 = roundStrokes(c.linescores, 3);
-
-    const totalStrokes =
-      [r1, r2, r3, r4].reduce<number | null>((acc, r) => {
-        if (r == null) return acc;
-        return (acc ?? 0) + r;
-      }, null);
-
-    // Position: prefer ESPN's provided value, fall back to status description
-    const positionRaw =
-      poolStatus !== "active"
-        ? poolStatus.toUpperCase()
-        : (c.status?.type?.shortDetail ?? "");
-
-    // ESPN sometimes puts position in a separate field; this is a best-effort parse.
-    // The actual finishing position isn't always in the scoreboard response —
-    // it may need to be inferred from sort order or fetched from event details.
-    // For our leaderboard, pool rank is calculated from team scores so raw position
-    // is display-only (shown on team detail page).
-    const position = derivePosition(c, poolStatus);
+    const { round_1, round_2, round_3, round_4, total_strokes, thru, today } =
+      parseRoundData(c, poolStatus);
 
     rows.push({
       name,
-      position,
-      score_vs_par: poolStatus === "active" ? scoreVsPar : scoreVsPar,
-      round_1: r1,
-      round_2: r2,
-      round_3: r3,
-      round_4: r4,
-      total_strokes: totalStrokes,
-      thru: parseThru(c.status, poolStatus),
-      today: parseToday(c, PAR, poolStatus),
+      position: "", // assigned below after sorting
+      score_vs_par: scoreVsPar,
+      round_1,
+      round_2,
+      round_3,
+      round_4,
+      total_strokes,
+      thru,
+      today,
       status: poolStatus,
     });
   }
 
+  // Compute T1/T2/T3 positions from the full sorted list
+  assignPositions(rows);
+
   return rows;
-}
-
-/** Best-effort position string for display. */
-function derivePosition(c: EspnCompetitor, poolStatus: "active" | "cut" | "wd" | "dq"): string {
-  if (poolStatus === "cut") return "CUT";
-  if (poolStatus === "wd") return "WD";
-  if (poolStatus === "dq") return "DQ";
-
-  // ESPN doesn't always include a structured position field on the scoreboard
-  // endpoint; it may appear in a nested object. Return score as position proxy
-  // until a richer endpoint is integrated.
-  const scoreStr = c.score ?? "";
-  if (scoreStr === "E") return "E";
-  return scoreStr; // e.g. "-11" — admin can see this is approximate
 }
