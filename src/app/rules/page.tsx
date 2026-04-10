@@ -12,7 +12,15 @@ export default function RulesPage() {
           </p>
           <p>
             <strong>Player Tier Breakdowns:</strong> The field is split into 13 tiers
-            based on FanDuel odds on 4/5/2026.
+            based on{" "}
+            <a
+              href="https://docs.google.com/spreadsheets/d/1PFPSgsHLqgCVFBDb26fPGEKhinCfZ8G3MXh-Nms7sPU/edit?gid=0#gid=0"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              FanDuel odds on 4/5/2026
+            </a>
+            .
           </p>
           <p>
             <strong>Selection:</strong> Pick ONE golfer from each tier (13 total)
@@ -35,7 +43,14 @@ export default function RulesPage() {
         <h3>Entry Information</h3>
         <div className="info-box">
           <p>
-            Entries with a timestamp up to <strong>~6:35 AM on Thursday</strong> were
+            <a
+              href="https://docs.google.com/spreadsheets/d/1khuiT7of7X1MBnoCwIKSAlpaT2GDdpJIhcxbx7MPAqU/edit?gid=0#gid=0"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Entries
+            </a>{" "}
+            with a timestamp up to <strong>~6:35 AM on Thursday</strong> were
             accepted. Total entries: <strong>114 teams</strong> with a total purse of{" "}
             <strong>$2,800.00</strong>.
           </p>
