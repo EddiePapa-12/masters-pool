@@ -686,6 +686,18 @@ button:disabled {
     line-height: 1.8;
 }
 
+/* Rules page hyperlinks */
+.rules-link {
+    color: var(--gold);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.rules-link:hover {
+    color: #e6c200;
+}
+
 /* Payout Table (Rules page) */
 .payout-table {
     width: 100%;

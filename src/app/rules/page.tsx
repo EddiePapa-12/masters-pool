@@ -17,6 +17,7 @@ export default function RulesPage() {
               href="https://docs.google.com/spreadsheets/d/1PFPSgsHLqgCVFBDb26fPGEKhinCfZ8G3MXh-Nms7sPU/edit?gid=0#gid=0"
               target="_blank"
               rel="noopener noreferrer"
+              className="rules-link"
             >
               FanDuel odds on 4/5/2026
             </a>
@@ -47,6 +48,7 @@ export default function RulesPage() {
               href="https://docs.google.com/spreadsheets/d/1khuiT7of7X1MBnoCwIKSAlpaT2GDdpJIhcxbx7MPAqU/edit?gid=0#gid=0"
               target="_blank"
               rel="noopener noreferrer"
+              className="rules-link"
             >
               Entries
             </a>{" "}
