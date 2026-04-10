@@ -686,6 +686,42 @@ button:disabled {
     line-height: 1.8;
 }
 
+/* Payout Table (Rules page) */
+.payout-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.payout-table td {
+    padding: 0.45rem 0.5rem;
+    border-bottom: 1px solid #d4e8da;
+}
+
+.payout-table td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.payout-table .payout-total-row td {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--green-dark);
+    border-bottom: 2px solid var(--green-dark);
+    padding-bottom: 0.6rem;
+}
+
+.payout-table .payout-deduction-row td {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.payout-table .payout-divider-row td {
+    padding: 0.25rem 0;
+    border-bottom: 2px solid var(--green-dark);
+}
+
 /* Golf Leaderboard Tab */
 .golf-leaderboard-container {
     max-width: 1100px;
