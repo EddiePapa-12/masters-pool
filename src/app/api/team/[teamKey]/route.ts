@@ -41,11 +41,17 @@ export async function GET(
     .eq("team_key", teamKey)
     .single();
 
+  const { data: settings } = await supabase
+    .from("pool_settings")
+    .select("projected_cut")
+    .single();
+
   return NextResponse.json({
     team_key: teamKey,
     team_name: entry?.team_name ?? "",
     entrant_name: entry?.entrant_name ?? "",
     predicted_score: entry?.predicted_score ?? null,
+    projected_cut: settings?.projected_cut ?? null,
     picks: data ?? [],
   });
 }

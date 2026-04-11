@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { formatTime, formatCut } from "@/lib/format";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function StatusBar({ projectedCut }: Props) {
+  const router = useRouter();
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
@@ -15,6 +17,7 @@ export default function StatusBar({ projectedCut }: Props) {
   useEffect(() => {
     const id = setInterval(() => {
       setIsUpdating(true);
+      router.refresh();
       setTimeout(() => {
         setIsUpdating(false);
         setLastUpdated(new Date());

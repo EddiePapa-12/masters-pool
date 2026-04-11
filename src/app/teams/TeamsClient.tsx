@@ -32,6 +32,7 @@ interface TeamDetail {
   team_name: string;
   entrant_name: string;
   predicted_score: number | null;
+  projected_cut: number | null;
   picks: PickRow[];
 }
 
@@ -156,23 +157,27 @@ export default function TeamsClient({ entries, initialTeamKey }: Props) {
                     <td className={golferScoreClass(pick.round_2)}>
                       {formatScore(pick.round_2)}
                     </td>
-                    <td className={golferScoreClass(pick.round_3)}>
-                      {formatScore(pick.round_3)}
+                    <td className={pick.status !== "active" && pick.round_3 === null ? "score-positive" : golferScoreClass(pick.round_3)}>
+                      {pick.status !== "active" && pick.round_3 === null ? "+10" : formatScore(pick.round_3)}
                     </td>
-                    <td className={golferScoreClass(pick.round_4)}>
-                      {formatScore(pick.round_4)}
+                    <td className={pick.status !== "active" && pick.round_4 === null ? "score-positive" : golferScoreClass(pick.round_4)}>
+                      {pick.status !== "active" && pick.round_4 === null ? "+10" : formatScore(pick.round_4)}
                     </td>
                     <td>
-                      {pick.status === "active" ? (
-                        <span className="golfer-made-cut">Made Cut</span>
+                      {pick.status === "wd" ? (
+                        <span className="golfer-cut">WD</span>
+                      ) : pick.status === "dq" ? (
+                        <span className="golfer-cut">DQ</span>
+                      ) : pick.status === "cut" ? (
+                        <span className="golfer-cut">Missed Cut</span>
+                      ) : pick.status === "active" &&
+                        pick.round_3 === null &&
+                        pick.round_2 !== null &&
+                        pick.score_vs_par !== null &&
+                        pick.score_vs_par > (detail.projected_cut ?? Infinity) ? (
+                        <span className="golfer-cut">Missed Cut</span>
                       ) : (
-                        <span className="golfer-cut">
-                          {pick.status === "wd"
-                            ? "WD"
-                            : pick.status === "dq"
-                            ? "DQ"
-                            : "Missed Cut"}
-                        </span>
+                        <span className="golfer-made-cut">Made Cut</span>
                       )}
                     </td>
                   </tr>

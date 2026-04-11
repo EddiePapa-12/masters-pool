@@ -23,6 +23,8 @@ const sourceSans = Source_Sans_3({
   display: "swap",
 });
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "2026 Masters Pool",
   description:
