@@ -356,7 +356,13 @@ export async function fetchMastersScores(): Promise<ScoreUpsertRow[]> {
     const name = c.athlete?.displayName?.trim();
     if (!name) continue;
 
-    const poolStatus = parseStatus(c.status?.type);
+    // Also check c.score for "CUT"/"WD"/"DQ" as a backup — ESPN sometimes sets
+    // the score field to these strings even when status.type isn't explicit.
+    const scoreString = (c.score ?? "").toUpperCase();
+    let poolStatus = parseStatus(c.status?.type);
+    if (poolStatus === "active" && scoreString === "CUT") poolStatus = "cut";
+    if (poolStatus === "active" && scoreString === "WD")  poolStatus = "wd";
+    if (poolStatus === "active" && scoreString === "DQ")  poolStatus = "dq";
     const scoreVsPar = parseScoreVsPar(c.score);
 
     const { round_1, round_2, round_3, round_4, total_strokes, thru, today } =

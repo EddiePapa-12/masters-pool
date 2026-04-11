@@ -4,14 +4,13 @@ import { formatScore, poolScoreClass } from "@/lib/format";
 import LeaderboardRefresher from "./LeaderboardRefresher";
 import Link from "next/link";
 
-export const revalidate = 60;
+export const revalidate = 30;
 
 async function getLeaderboard(): Promise<{
   rows: LeaderboardRow[];
   entryCount: number;
   prizePool: number;
   projectedCut: number;
-  thruthCutByTeam: Record<number, number>;
   error: string | null;
 }> {
   try {
@@ -21,12 +20,9 @@ async function getLeaderboard(): Promise<{
       { auth: { persistSession: false } }
     );
 
-    const [lbRes, settingsRes, scoresRes, picksRes, entriesRes] = await Promise.all([
+    const [lbRes, settingsRes] = await Promise.all([
       supabase.rpc("calculate_leaderboard"),
       supabase.from("pool_settings").select("projected_cut, entry_fee").single(),
-      supabase.from("tournament_scores").select("golfer_id, status, round_2, round_3, score_vs_par"),
-      supabase.from("picks").select("entry_id, golfer_id"),
-      supabase.from("entries").select("id, team_key"),
     ]);
 
     if (lbRes.error) throw lbRes.error;
@@ -35,43 +31,11 @@ async function getLeaderboard(): Promise<{
     const entryFee = settingsRes.data?.entry_fee ?? 25;
     const projectedCut = settingsRes.data?.projected_cut ?? 0;
 
-    // Compute golfers_thru_cut from raw data (the DB function counts all 13 picks).
-    // A golfer made the cut if: status is active AND NOT (R3 null + R2 present + score > cut line).
-    const madeCutIds = new Set<string>(
-      (scoresRes.data ?? [])
-        .filter((s) =>
-          s.status !== "cut" &&
-          s.status !== "wd" &&
-          s.status !== "dq" &&
-          !(
-            s.round_3 === null &&
-            s.round_2 !== null &&
-            s.score_vs_par !== null &&
-            s.score_vs_par > projectedCut
-          )
-        )
-        .map((s) => s.golfer_id)
-    );
-
-    // Map entry uuid -> team_key
-    const entryToTeam: Record<string, number> = {};
-    for (const e of entriesRes.data ?? []) entryToTeam[e.id] = e.team_key;
-
-    // Count made-cut golfers per team
-    const thruthCutByTeam: Record<number, number> = {};
-    for (const pick of picksRes.data ?? []) {
-      const teamKey = entryToTeam[pick.entry_id];
-      if (teamKey !== undefined && madeCutIds.has(pick.golfer_id)) {
-        thruthCutByTeam[teamKey] = (thruthCutByTeam[teamKey] ?? 0) + 1;
-      }
-    }
-
     return {
       rows,
       entryCount: rows.length,
       prizePool: rows.length * entryFee,
       projectedCut,
-      thruthCutByTeam,
       error: null,
     };
   } catch (err) {
@@ -80,14 +44,13 @@ async function getLeaderboard(): Promise<{
       entryCount: 0,
       prizePool: 0,
       projectedCut: 0,
-      thruthCutByTeam: {},
       error: err instanceof Error ? err.message : "Unknown error",
     };
   }
 }
 
 export default async function PoolLeaderboardPage() {
-  const { rows, entryCount, prizePool, projectedCut, thruthCutByTeam, error } =
+  const { rows, entryCount, prizePool, projectedCut, error } =
     await getLeaderboard();
 
   const cutLabel =
@@ -158,7 +121,7 @@ export default async function PoolLeaderboardPage() {
                       >
                         {formatScore(entry.team_score)}
                       </td>
-                      <td>{thruthCutByTeam[entry.team_key] ?? 0}</td>
+                      <td>{entry.golfers_thru_cut}</td>
                     </tr>
                   ))}
                 </tbody>

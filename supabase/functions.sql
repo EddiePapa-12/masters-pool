@@ -10,8 +10,8 @@
 -- Returns the pool-adjusted score for a single golfer:
 --   - Active / not yet started: their score_vs_par (null if pre-tournament)
 --   - Cut / WD / DQ (treated identically per pool rules): R1 + R2 + cut_penalty
---     If R1 or R2 is null (WD before playing), treat missing rounds as +cut_penalty
---     to ensure they sort to the bottom — never silently dropped.
+--     Round scores are stored as vs-par integers (e.g. -2, 0, +3).
+--     If R1 or R2 is null (WD before playing), treat missing rounds as 0 (even par).
 --
 -- The function reads cut_penalty from pool_settings.
 -- =============================================================================
@@ -24,10 +24,10 @@ as $$
     case ts.status
       when 'active' then ts.score_vs_par  -- may be null if player hasn't teed off
       else
-        -- cut / wd / dq all get the same penalty treatment
-        coalesce(ts.round_1, ps.par) +
-        coalesce(ts.round_2, ps.par) -
-        (ps.par * 2) +        -- convert raw strokes to vs-par
+        -- cut / wd / dq: sum vs-par round scores + penalty
+        -- rounds are stored as vs-par (not raw strokes), so just add them directly
+        coalesce(ts.round_1, 0) +
+        coalesce(ts.round_2, 0) +
         ps.cut_penalty        -- add the pool penalty (default 20)
     end
   from tournament_scores ts
@@ -99,13 +99,20 @@ as $$
     group by rp.entry_id
   ),
 
-  -- 4. Count how many of each team's golfers made the cut
+  -- 4. Count how many of each team's golfers made the cut.
+  --    Mirrors TeamsClient.tsx "Made Cut" badge logic:
+  --      active + has scores + NOT (R2 done, R3 not started, score > projected cut)
   cut_counts as (
     select
       p.entry_id,
       count(*) filter (
         where ts.status = 'active'
           and ts.score_vs_par is not null   -- has played at least one round
+          and not (                         -- not projected to miss cut
+            ts.round_2 is not null
+            and ts.round_3 is null
+            and ts.score_vs_par > (select projected_cut from pool_settings limit 1)
+          )
       )::integer as golfers_thru_cut
     from picks p
     left join tournament_scores ts on ts.golfer_id = p.golfer_id
@@ -305,12 +312,48 @@ begin
       score_vs_par  = excluded.score_vs_par,
       round_1       = excluded.round_1,
       round_2       = excluded.round_2,
-      round_3       = excluded.round_3,
-      round_4       = excluded.round_4,
+      -- R3/R4: once a golfer is cut, lock in the +10 penalty display values.
+      -- ESPN sends null for these rounds; we store +10 so the Team Status page
+      -- shows the correct per-round penalty without needing hardcoded placeholders.
+      round_3       = case
+                        when tournament_scores.status in ('cut', 'wd', 'dq') then coalesce(tournament_scores.round_3, 10)
+                        when excluded.status in ('cut', 'wd', 'dq')          then 10
+                        when excluded.round_1 is not null
+                          and excluded.round_2 is not null
+                          and excluded.round_3 is null
+                          and (excluded.round_1 + excluded.round_2) > (select projected_cut from pool_settings limit 1)
+                        then 10
+                        else excluded.round_3
+                      end,
+      round_4       = case
+                        when tournament_scores.status in ('cut', 'wd', 'dq') then coalesce(tournament_scores.round_4, 10)
+                        when excluded.status in ('cut', 'wd', 'dq')          then 10
+                        when excluded.round_1 is not null
+                          and excluded.round_2 is not null
+                          and excluded.round_3 is null
+                          and (excluded.round_1 + excluded.round_2) > (select projected_cut from pool_settings limit 1)
+                        then 10
+                        else excluded.round_4
+                      end,
       total_strokes = excluded.total_strokes,
       thru          = excluded.thru,
       today         = excluded.today,
-      status        = excluded.status,
+      -- Never overwrite a confirmed cut/wd/dq status back to active.
+      -- Once a golfer is cut, they stay cut regardless of what ESPN sends.
+      status        = case
+                        -- 1. Never downgrade a confirmed cut/wd/dq back to active
+                        when tournament_scores.status in ('cut', 'wd', 'dq') then tournament_scores.status
+                        -- 2. Accept cut/wd/dq if ESPN explicitly sends it
+                        when excluded.status in ('cut', 'wd', 'dq') then excluded.status
+                        -- 3. Auto-cut rule: both rounds completed, no R3 yet, score at or over cut line
+                        when excluded.round_1 is not null
+                          and excluded.round_2 is not null
+                          and excluded.round_3 is null
+                          and (excluded.round_1 + excluded.round_2) > (select projected_cut from pool_settings limit 1)
+                        then 'cut'::golfer_status
+                        -- 4. Otherwise trust ESPN
+                        else excluded.status
+                      end,
       updated_at    = now();
 
     golfer_name := s->>'name';
