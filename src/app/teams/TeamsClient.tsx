@@ -48,6 +48,10 @@ export default function TeamsClient({ entries, initialTeamKey }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setSelectedKey(initialTeamKey);
+  }, [initialTeamKey]);
+
+  useEffect(() => {
     if (!selectedKey) return;
     let cancelled = false;
 
