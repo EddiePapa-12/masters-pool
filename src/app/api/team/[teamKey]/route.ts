@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
-export const revalidate = 60;
+export const revalidate = 0;
 
 export async function GET(
   _req: NextRequest,

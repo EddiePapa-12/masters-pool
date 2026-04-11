@@ -54,24 +54,33 @@ export default function TeamsClient({ entries, initialTeamKey }: Props) {
   useEffect(() => {
     if (!selectedKey) return;
     let cancelled = false;
+    let isInitial = true;
+
+    // Clear stale data immediately so we don't flash the old team while loading
+    setDetail(null);
 
     async function load() {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/team/${selectedKey}`);
+        const res = await fetch(`/api/team/${selectedKey}`, { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: TeamDetail = await res.json();
         if (!cancelled) setDetail(json);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load team");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          isInitial = false;
+        }
       }
     }
 
     load();
-    return () => { cancelled = true; };
+    // Poll every 60s so scores stay current without a manual refresh
+    const id = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
   }, [selectedKey]);
 
   // Compute team score from is_counting picks
